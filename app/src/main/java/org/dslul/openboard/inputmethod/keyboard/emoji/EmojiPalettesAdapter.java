@@ -29,6 +29,7 @@ import org.dslul.openboard.inputmethod.latin.R;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import org.dslul.openboard.inputmethod.latin.settings.Settings;
 
 final class EmojiPalettesAdapter extends RecyclerView.Adapter<EmojiPalettesAdapter.ViewHolder>{
     private static final String TAG = EmojiPalettesAdapter.class.getSimpleName();
@@ -57,6 +58,10 @@ final class EmojiPalettesAdapter extends RecyclerView.Adapter<EmojiPalettesAdapt
     }
 
     public void addRecentKey(final Key key) {
+        if (Settings.getInstance().getCurrent().mIncognitoModeEnabled) {
+            // We do not want to log recent keys while being in incognito
+            return;
+        }
         if (mEmojiCategory.isInRecentTab()) {
             mRecentsKeyboard.addPendingKey(key);
             return;
@@ -182,7 +187,7 @@ final class EmojiPalettesAdapter extends RecyclerView.Adapter<EmojiPalettesAdapt
             mActiveKeyboardViews.remove(position);
         }
         final Keyboard keyboard =
-                mEmojiCategory.getKeyboardFromPagePosition(position);
+                mEmojiCategory.getKeyboardFromAdapterPosition(position);
         holder.getKeyboardView().setKeyboard(keyboard);
         holder.getKeyboardView().setOnKeyEventListener(mListener);
         //parent.addView(keyboardView);
@@ -201,9 +206,8 @@ final class EmojiPalettesAdapter extends RecyclerView.Adapter<EmojiPalettesAdapt
 
     @Override
     public int getItemCount() {
-        return mEmojiCategory.getTotalPageCountOfAllCategories();
+        return mEmojiCategory.getCurrentCategoryPageCount();
     }
-
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         private EmojiPageKeyboardView customView;

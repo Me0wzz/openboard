@@ -70,6 +70,7 @@ public final class KeyboardId {
     public static final int ELEMENT_EMOJI_CATEGORY14 = 24;
     public static final int ELEMENT_EMOJI_CATEGORY15 = 25;
     public static final int ELEMENT_EMOJI_CATEGORY16 = 26;
+    public static final int ELEMENT_CLIPBOARD = 27;
 
     public final RichInputMethodSubtype mSubtype;
     public final int mWidth;
@@ -84,6 +85,7 @@ public final class KeyboardId {
     public final String mCustomActionLabel;
     public final boolean mHasShortcutKey;
     public final boolean mIsSplitLayout;
+    public final boolean mOneHandedModeEnabled;
 
     private final int mHashCode;
 
@@ -102,6 +104,7 @@ public final class KeyboardId {
                 ? mEditorInfo.actionLabel.toString() : null;
         mHasShortcutKey = params.mVoiceInputKeyEnabled;
         mIsSplitLayout = params.mIsSplitLayoutEnabled;
+        mOneHandedModeEnabled = params.mOneHandedModeEnabled;
 
         mHashCode = computeHashCode(this);
     }
@@ -255,6 +258,7 @@ public final class KeyboardId {
         case ELEMENT_EMOJI_CATEGORY14: return "emojiCategory14";
         case ELEMENT_EMOJI_CATEGORY15: return "emojiCategory15";
         case ELEMENT_EMOJI_CATEGORY16: return "emojiCategory16";
+        case ELEMENT_CLIPBOARD: return "clipboard";
         default: return null;
         }
     }

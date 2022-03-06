@@ -53,6 +53,11 @@ public final class KeyboardCodesSet {
         "key_emoji",
         "key_alpha_from_emoji",
         "key_unspecified",
+        "key_clipboard",
+        "key_alpha_from_clipboard",
+        "key_start_onehanded",
+        "key_stop_onehanded",
+        "key_switch_onehanded"
     };
 
     private static final int[] DEFAULT = {
@@ -73,6 +78,11 @@ public final class KeyboardCodesSet {
         Constants.CODE_EMOJI,
         Constants.CODE_ALPHA_FROM_EMOJI,
         Constants.CODE_UNSPECIFIED,
+        Constants.CODE_CLIPBOARD,
+        Constants.CODE_ALPHA_FROM_CLIPBOARD,
+        Constants.CODE_START_ONE_HANDED_MODE,
+        Constants.CODE_STOP_ONE_HANDED_MODE,
+        Constants.CODE_SWITCH_ONE_HANDED_MODE
     };
 
     static {

@@ -694,6 +694,23 @@ public final class InputLogic {
                 // Note: Switching back from Emoji keyboard to the main keyboard is being
                 // handled in {@link KeyboardState#onEvent(Event,int)}.
                 break;
+            case Constants.CODE_CLIPBOARD:
+                // Note: If clipboard history is enabled, switching to clipboard keyboard
+                // is being handled in {@link KeyboardState#onEvent(Event,int)}.
+                // If disabled, current clipboard content is committed.
+                if (!inputTransaction.getMSettingsValues().mClipboardHistoryEnabled) {
+                    final CharSequence content = mLatinIME.getClipboardHistoryManager()
+                            .retrieveClipboardContent();
+                    if (!TextUtils.isEmpty(content)) {
+                        mConnection.commitText(content, 1);
+                        inputTransaction.setDidAffectContents();
+                    }
+                }
+                break;
+            case Constants.CODE_ALPHA_FROM_CLIPBOARD:
+                // Note: Switching back from clipboard keyboard to the main keyboard is being
+                // handled in {@link KeyboardState#onEvent(Event,int)}.
+                break;
             case Constants.CODE_SHIFT_ENTER:
                 final Event tmpEvent = Event.createSoftwareKeypressEvent(Constants.CODE_ENTER,
                         event.getMKeyCode(), event.getMX(), event.getMY(), event.isKeyRepeat());
@@ -704,6 +721,14 @@ public final class InputLogic {
                 break;
             case Constants.CODE_OUTPUT_TEXT:
                 mWordComposer.applyProcessedEvent(event);
+            case Constants.CODE_START_ONE_HANDED_MODE:
+            case Constants.CODE_STOP_ONE_HANDED_MODE:
+                // Note: One-handed mode activation is being
+                // handled in {@link KeyboardState#onEvent(Event,int)}.
+                break;
+            case Constants.CODE_SWITCH_ONE_HANDED_MODE:
+                // Note: Switching one-handed side is being
+                // handled in {@link KeyboardState#onEvent(Event,int)}.
                 break;
             default:
                 throw new RuntimeException("Unknown key code : " + event.getMKeyCode());
@@ -818,7 +843,7 @@ public final class InputLogic {
 
         if (mWordComposer.isCursorFrontOrMiddleOfComposingWord()) {
             // If we are in the middle of a recorrection, we need to commit the recorrection
-            // first so that we can insert the character at the current cursor position.
+            // first so that we can insert the character at the current cursor position.1
             // We also need to unlearn the original word that is now being corrected.
             unlearnWord(mWordComposer.getTypedWord(), inputTransaction.getMSettingsValues(),
                     Constants.EVENT_BACKSPACE);
