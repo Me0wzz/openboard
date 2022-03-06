@@ -115,11 +115,13 @@
                 latin:additionalMoreKeys="&#x09E9;"
                 latin:moreKeys="&#x098F;" />
             <!-- U+09B0: "র" BENGALI LETTER RA
-                 U+09EA: "৪" BENGALI DIGIT FOUR -->
+                 U+09EA: "৪" BENGALI DIGIT FOUR 
+                 "র‌্য" BENGALI LIGATURE -->
             <Key
                 latin:keySpec="&#x09B0;"
                 latin:keyHintLabel="&#x09EA;"
-                latin:additionalMoreKeys="&#x09EA;" />
+                latin:additionalMoreKeys="&#x09EA;" 
+                latin:moreKeys="&#2480;&#8205;&#2509;&#2479;" />
             <!-- U+09A4: "ত" BENGALI LETTER TA
                  U+09EB: "৫" BENGALI DIGIT FIVE
                  U+09CE: "ৎ" BENGALI LETTER KHANDA TA

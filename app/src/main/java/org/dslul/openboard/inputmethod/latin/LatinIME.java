@@ -32,6 +32,7 @@ import android.os.Build;
 import android.os.Debug;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.Process;
 import android.text.InputType;
 import android.util.Log;
 import android.util.PrintWriterPrinter;
@@ -187,11 +188,31 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
     }
     final HideSoftInputReceiver mHideSoftInputReceiver = new HideSoftInputReceiver(this);
 
+    final static class RestartAfterDeviceUnlockReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+            // Restart the keyboard if credential encrypted storage is unlocked. This reloads the
+            // dictionary and other data from credential-encrypted storage (with the onCreate()
+            // method).
+            if (Intent.ACTION_USER_UNLOCKED.equals(action)) {
+                final int myPid = Process.myPid();
+                Log.i(TAG, "Killing my process: pid=" + myPid);
+                Process.killProcess(myPid);
+            } else {
+                Log.e(TAG, "Unexpected intent " + intent);
+            }
+        }
+    }
+    final RestartAfterDeviceUnlockReceiver mRestartAfterDeviceUnlockReceiver = new RestartAfterDeviceUnlockReceiver();
+
     private AlertDialog mOptionsDialog;
 
     private final boolean mIsHardwareAcceleratedDrawingEnabled;
 
     private GestureConsumer mGestureConsumer = GestureConsumer.NULL_GESTURE_CONSUMER;
+
+    private final ClipboardHistoryManager mClipboardHistoryManager = new ClipboardHistoryManager(this);
 
     public final UIHandler mHandler = new UIHandler(this);
 
@@ -208,8 +229,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         private static final int MSG_DEALLOCATE_MEMORY = 9;
         private static final int MSG_RESUME_SUGGESTIONS_FOR_START_INPUT = 10;
         private static final int MSG_SWITCH_LANGUAGE_AUTOMATICALLY = 11;
+        private static final int MSG_UPDATE_CLIPBOARD_PINNED_CLIPS = 12;
         // Update this when adding new messages
-        private static final int MSG_LAST = MSG_SWITCH_LANGUAGE_AUTOMATICALLY;
+        private static final int MSG_LAST = MSG_UPDATE_CLIPBOARD_PINNED_CLIPS;
 
         private static final int ARG1_NOT_GESTURE_INPUT = 0;
         private static final int ARG1_DISMISS_GESTURE_FLOATING_PREVIEW_TEXT = 1;
@@ -305,6 +327,11 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                     break;
                 case MSG_SWITCH_LANGUAGE_AUTOMATICALLY:
                     latinIme.switchLanguage((InputMethodSubtype)msg.obj);
+                    break;
+                case MSG_UPDATE_CLIPBOARD_PINNED_CLIPS:
+                    @SuppressWarnings("unchecked")
+                    List<ClipboardHistoryEntry> entries = (List<ClipboardHistoryEntry>) msg.obj;
+                    latinIme.mClipboardHistoryManager.onPinnedClipsAvailable(entries);
                     break;
             }
         }
@@ -426,6 +453,10 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
         public void postSwitchLanguage(final InputMethodSubtype subtype) {
             obtainMessage(MSG_SWITCH_LANGUAGE_AUTOMATICALLY, subtype).sendToTarget();
+        }
+
+        public void postUpdateClipboardPinnedClips(final List<ClipboardHistoryEntry> clips) {
+            obtainMessage(MSG_UPDATE_CLIPBOARD_PINNED_CLIPS, clips).sendToTarget();
         }
 
         // Working variables for the following methods.
@@ -594,6 +625,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         mStatsUtilsManager.onCreate(this /* context */, mDictionaryFacilitator);
         super.onCreate();
 
+        mClipboardHistoryManager.onCreate();
         mHandler.onCreate();
 
         // TODO: Resolve mutual dependencies of {@link #loadSettings()} and
@@ -625,6 +657,10 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         hideSoftInputFilter.addAction(ACTION_HIDE_SOFT_INPUT);
         registerReceiver(mHideSoftInputReceiver, hideSoftInputFilter, PERMISSION_HIDE_SOFT_INPUT,
                 null /* scheduler */);
+
+        final IntentFilter restartAfterUnlockFilter = new IntentFilter();
+        restartAfterUnlockFilter.addAction(Intent.ACTION_USER_UNLOCKED);
+        registerReceiver(mRestartAfterDeviceUnlockReceiver, restartAfterUnlockFilter);
 
         StatsUtils.onCreate(mSettings.getCurrent(), mRichImm);
     }
@@ -728,12 +764,14 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
 
     @Override
     public void onDestroy() {
+        mClipboardHistoryManager.onDestroy();
         mDictionaryFacilitator.closeDictionaries();
         mSettings.onDestroy();
         unregisterReceiver(mHideSoftInputReceiver);
         unregisterReceiver(mRingerModeChangeReceiver);
         unregisterReceiver(mDictionaryPackInstallReceiver);
         unregisterReceiver(mDictionaryDumpBroadcastReceiver);
+        unregisterReceiver(mRestartAfterDeviceUnlockReceiver);
         mStatsUtilsManager.onDestroy(this /* context */);
         super.onDestroy();
     }
@@ -743,6 +781,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         unregisterReceiver(mDictionaryPackInstallReceiver);
         unregisterReceiver(mDictionaryDumpBroadcastReceiver);
         unregisterReceiver(mRingerModeChangeReceiver);
+        unregisterReceiver(mRestartAfterDeviceUnlockReceiver);
         mInputLogic.recycle();
     }
 
@@ -1093,6 +1132,10 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         }
     }
 
+    public CharSequence getSelection() {
+        return mInputLogic.mConnection.getSelectedText(0);
+    }
+
     /**
      * This is called when the user has clicked on the extracted text view,
      * when running in fullscreen mode.  The default implementation hides
@@ -1198,6 +1241,7 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             return;
         }
         final int suggestionsHeight = (!mKeyboardSwitcher.isShowingEmojiPalettes()
+                && !mKeyboardSwitcher.isShowingClipboardHistory()
                 && mSuggestionStripView.getVisibility() == View.VISIBLE)
                 ? mSuggestionStripView.getHeight() : 0;
         final int visibleTopY = inputHeight - visibleKeyboardView.getHeight() - suggestionsHeight;
@@ -1298,11 +1342,11 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
         }
     }
 
-    int getCurrentAutoCapsState() {
+    public int getCurrentAutoCapsState() {
         return mInputLogic.getCurrentAutoCapsState(mSettings.getCurrent());
     }
 
-    int getCurrentRecapitalizeState() {
+    public int getCurrentRecapitalizeState() {
         return mInputLogic.getCurrentRecapitalizeState();
     }
 
@@ -1560,10 +1604,11 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
                 currentSettingsValues.mInputAttributes.mShouldShowSuggestions
                         && currentSettingsValues.isSuggestionsEnabledPerUserSettings();
         final boolean shouldShowSuggestionsStripUnlessPassword = currentSettingsValues.mShowsVoiceInputKey
+                || currentSettingsValues.mShowsClipboardKey
                 || shouldShowSuggestionCandidates
                 || currentSettingsValues.isApplicationSpecifiedCompletionsOn();
         final boolean shouldShowSuggestionsStrip = shouldShowSuggestionsStripUnlessPassword
-                && !currentSettingsValues.mInputAttributes.mIsPasswordField;
+                && (!currentSettingsValues.mInputAttributes.mIsPasswordField || currentSettingsValues.mShowsClipboardKey);
         mSuggestionStripView.updateVisibility(shouldShowSuggestionsStrip, isFullscreenMode());
         if (!shouldShowSuggestionsStrip) {
             return;
@@ -1799,6 +1844,10 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
             }
         }
     };
+
+    public ClipboardHistoryManager getClipboardHistoryManager() {
+        return mClipboardHistoryManager;
+    }
 
     void launchSettings() {
         mInputLogic.commitTyped(mSettings.getCurrent(), LastComposedWord.NOT_A_SEPARATOR);

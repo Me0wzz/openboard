@@ -16,6 +16,7 @@
 
 package org.dslul.openboard.inputmethod.latin.settings;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -24,6 +25,7 @@ import android.content.res.Resources;
 import android.os.Build;
 import android.util.Log;
 
+import android.view.Gravity;
 import org.dslul.openboard.inputmethod.latin.AudioAndHapticFeedbackManager;
 import org.dslul.openboard.inputmethod.latin.InputAttributes;
 import org.dslul.openboard.inputmethod.latin.R;
@@ -53,9 +55,15 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
     public static final String PREF_VIBRATE_ON = "vibrate_on";
     public static final String PREF_SOUND_ON = "sound_on";
     public static final String PREF_POPUP_ON = "popup_on";
+    public static final String PREF_THEME_FAMILY = "theme_family";
+    public static final String PREF_THEME_VARIANT = "theme_variant";
+    public static final String PREF_THEME_KEY_BORDERS = "theme_key_borders";
+    public static final String PREF_THEME_DAY_NIGHT = "theme_auto_day_night";
+    public static final String PREF_THEME_AMOLED_MODE = "theme_amoled_mode";
     // PREF_VOICE_MODE_OBSOLETE is obsolete. Use PREF_VOICE_INPUT_KEY instead.
     public static final String PREF_VOICE_MODE_OBSOLETE = "voice_mode";
     public static final String PREF_VOICE_INPUT_KEY = "pref_voice_input_key";
+    public static final String PREF_CLIPBOARD_CLIPBOARD_KEY = "pref_clipboard_clipboard_key";
     public static final String PREF_EDIT_PERSONAL_DICTIONARY = "edit_personal_dictionary";
     // PREF_AUTO_CORRECTION_THRESHOLD_OBSOLETE is obsolete. Use PREF_AUTO_CORRECTION instead.
     public static final String PREF_AUTO_CORRECTION_THRESHOLD_OBSOLETE =
@@ -77,6 +85,8 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
             "pref_show_language_switch_key";
     public static final String PREF_SHOW_EMOJI_KEY =
             "pref_show_emoji_key";
+    public static final String PREF_SHOW_CLIPBOARD_KEY =
+            "pref_show_clipboard_key";
     public static final String PREF_INCLUDE_OTHER_IMES_IN_LANGUAGE_SWITCH_LIST =
             "pref_include_other_imes_in_language_switch_list";
     public static final String PREF_CUSTOM_INPUT_STYLES = "custom_input_styles";
@@ -99,6 +109,9 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
             "pref_gesture_floating_preview_text";
     public static final String PREF_SHOW_SETUP_WIZARD_ICON = "pref_show_setup_wizard_icon";
 
+    public static final String PREF_ONE_HANDED_MODE = "pref_one_handed_mode_enabled";
+    public static final String PREF_ONE_HANDED_GRAVITY = "pref_one_handed_mode_gravity";
+
     public static final String PREF_KEY_IS_INTERNAL = "pref_key_is_internal";
 
     public static final String PREF_ENABLE_METRICS_LOGGING = "pref_enable_metrics_logging";
@@ -107,6 +120,11 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
             "pref_show_number_row";
 
     public static final String PREF_SHOW_HINTS = "pref_show_hints";
+
+    public static final String PREF_SPACE_TO_CHANGE_LANG = "prefs_long_press_keyboard_to_change_lang";
+
+    public static final String PREF_ENABLE_CLIPBOARD_HISTORY = "pref_enable_clipboard_history";
+    public static final String PREF_CLIPBOARD_HISTORY_RETENTION_TIME = "pref_clipboard_history_retention_time";
 
     // This preference key is deprecated. Use {@link #PREF_SHOW_LANGUAGE_SWITCH_KEY} instead.
     // This is being used only for the backward compatibility.
@@ -338,6 +356,22 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
         final int milliseconds = prefs.getInt(prefKey, UNDEFINED_PREFERENCE_VALUE_INT);
         return (milliseconds != UNDEFINED_PREFERENCE_VALUE_INT) ? milliseconds : defaultValue;
     }
+
+    public static boolean readClipboardHistoryEnabled(final SharedPreferences prefs) {
+        return prefs.getBoolean(PREF_ENABLE_CLIPBOARD_HISTORY, true);
+    }
+
+    public static int readClipboardHistoryRetentionTime(final SharedPreferences prefs,
+                                              final Resources res) {
+        final int minutes = prefs.getInt(
+                PREF_CLIPBOARD_HISTORY_RETENTION_TIME, UNDEFINED_PREFERENCE_VALUE_INT);
+        return (minutes != UNDEFINED_PREFERENCE_VALUE_INT) ? minutes
+                : readDefaultClipboardHistoryRetentionTime(res);
+    }
+
+    public static int readDefaultClipboardHistoryRetentionTime(final Resources res) {
+        return res.getInteger(R.integer.config_clipboard_history_retention_time);
+    }
     
     public static boolean readShowsNumberRow(final SharedPreferences prefs) {
         return prefs.getBoolean(PREF_SHOW_NUMBER_ROW, false);
@@ -372,6 +406,23 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
             return !isApplicationInSystemImage;
         }
         return prefs.getBoolean(PREF_SHOW_SETUP_WIZARD_ICON, false);
+    }
+
+    public static boolean readOneHandedModeEnabled(final SharedPreferences prefs) {
+        return prefs.getBoolean(PREF_ONE_HANDED_MODE, false);
+    }
+
+    public void writeOneHandedModeEnabled(final boolean enabled) {
+        mPrefs.edit().putBoolean(PREF_ONE_HANDED_MODE, enabled).apply();
+    }
+
+    @SuppressLint("RtlHardcoded")
+    public static int readOneHandedModeGravity(final SharedPreferences prefs) {
+        return prefs.getInt(PREF_ONE_HANDED_GRAVITY, Gravity.LEFT);
+    }
+
+    public void writeOneHandedModeGravity(final int gravity) {
+        mPrefs.edit().putInt(PREF_ONE_HANDED_GRAVITY, gravity).apply();
     }
 
     public static boolean readHasHardwareKeyboard(final Configuration conf) {
